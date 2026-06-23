@@ -1,6 +1,7 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const path = require('path'); // تأكد من وجود هذا السطر في الأعلى
 
 const app = express();
 const server = http.createServer(app);
@@ -13,8 +14,12 @@ let usersDatabase = {
     "ملكة سبأ": { role: "عضو", coins: 150 }
 };
 
-// حفظ اتصالات غرف الصوت الحية
 let activeAudioUsers = {}; 
+
+// سطر توجيه السيرفر لفتح واجهة الشات فوراً
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 io.on('connection', (socket) => {
     console.log('مستخدم متصل:', socket.id);
@@ -31,11 +36,9 @@ io.on('connection', (socket) => {
             role: usersDatabase[username].role
         });
 
-        // إعلام المستخدمين الجدد بمن يتواجد حالياً في الغرفة الصوتية
         socket.emit('all_audio_users', activeAudioUsers);
     });
 
-    // 1. نظام إرسال واستقبال إشارات الصوت (WebRTC Signaling)
     socket.on('audio_offer', (data) => {
         io.to(data.target).emit('audio_offer', {
             sdp: data.sdp,
@@ -58,7 +61,6 @@ io.on('connection', (socket) => {
         });
     });
 
-    // 2. معالجة الرسائل النصية المعتادة
     socket.on('send_chat_message', (messageData) => {
         const user = usersDatabase[messageData.username] || { role: "عضو" };
         const formattedData = {
@@ -70,7 +72,6 @@ io.on('connection', (socket) => {
         io.emit('receive_chat_message', formattedData);
     });
 
-    // 3. نظام إرسال الهدايا والعملات
     socket.on('send_gift_coins', (data) => {
         const sender = socket.username;
         const receiver = data.receiver;
@@ -101,9 +102,8 @@ io.on('connection', (socket) => {
     });
 });
 
-
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
-          
+              
